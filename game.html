@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<title>Zuma clone</title>
+		<style type="text/css">
+			*{margin: 0;padding: 0;}
+			body{background: black;}
+			div{background: white;width: 640px;margin: 20px auto;}
+		</style>
+		<script src="load.js"></script>
+		<script src="ball.js"></script>
+	</head>
+	<body>
+		<div>
+			<canvas id="canvas" width="640px" height="480px"></canvas>
+		</div>
+		<script type="text/javascript">
+			/*
+				TODO:
+				- Ball go back if color gap same
+				-
+			*/
+			const ball = [], aBall = [];
+			//frog rotation
+			let iRotate = 0;
+			let frogColor = "red", frogColor2 = "yellow";
+			const ballcolors = ["red", "silver","gold",'blue','green','magenta'];
+
+			const canvas = document.getElementById('canvas');
+			const ctx = canvas.getContext('2d');
+			let waypoint = [
+				//{x0:100,y0:100, x1:535,y1:-200, x2:525,y2:-200, x3:525,y3:-200},
+				{x0:525,y0:-200, x1:535,y1:-20, x2:525,y2:-20, x3:525,y3:-20},
+				{x0:525,y0:-20, x1:535,y1:230, x2:525,y2:330, x3:440,y3:400},
+				{x0:440,y0:400, x1:380,y1:460, x2:210,y2:470, x3:145,y3:355},
+				{x0:145,y0:355, x1:0,y1:70, x2:350,y2:-30, x3:450,y3:135},
+				{x0:450,y0:135, x1:530,y1:250, x2:400,y2:500, x3:200,y3:350},
+				{x0:200,y0:350, x1:50,y1:150, x2:320,y2:35, x3:400,y3:160},
+				{x0:400,y0:160, x1:520,y1:370, x2:180,y2:420, x3:210,y3:210},
+			];
+			function startGame() {
+				//spawn balls
+				let nball = 20;
+				for (let i=0;i<nball;i++) {
+					let bb = new Ball(waypoint[0].x0,waypoint[0].y0,waypoint);
+					bb.color = ballcolors[Math.floor(Math.random()*(ballcolors.length+1))];
+					ball.push(bb);
+				}
+				draw();
+			}
+			//eventshandlers
+			canvas.onmousemove = function (ev) {
+				var ev = ev || event;
+				var disX = ev.clientX - canvas.offsetLeft;
+				var disY = ev.clientY - canvas.offsetTop;
+				var a = disX - 290;
+				var b = disY - 200;
+				var c = Math.sqrt(a*a+b*b);  //开根号
+				if(a>0 && b>0){
+					iRotate =2*Math.PI - Math.asin(a/c);  //sin的逆运算
+				}
+				else if(a>0){
+					iRotate = Math.PI+Math.asin(a/c);  //sin的逆运算
+				}
+				if(a<0 && b<0){
+					iRotate = Math.PI+Math.asin(a/c);
+				}
+				else if(a<0){
+					iRotate =- Math.asin(a/c);
+				}
+			};
+			canvas.onmousedown = function (ev) {
+				var ev = ev || event;
+				var disX = ev.clientX - canvas.offsetLeft;
+				var disY = ev.clientY - canvas.offsetTop;
+				aBall.push ({
+					x : 0,
+					y : 0,
+					a : disX - 290,
+					b : disY - 200,
+					color : frogColor,
+				});
+				frogColor = frogColor2;
+				frogColor2 = ballcolors[Math.floor(Math.random()*(ballcolors.length+1))];
+			};
+			//Hit detection/collision
+			function pz(x1,y1,x2,y2) {
+				var a = x1 - x2;
+				var b = y1 - y2;
+				var c = Math.sqrt(a*a+b*b);
+				if(c<40){
+					return true;
+				}
+				else{
+					return false;
+				}
+			}
+			function insertBall(b,pos,clr) {
+				console.log(pos);
+				const ball3 = new Ball(ball[pos].x,ball[pos].y,waypoint);
+				ball3.v = ball[pos].v;
+				ball3.t = ball[pos].t;
+				ball3.color = clr;
+				const ball2 = ball.splice(pos);
+				ball.push(ball3);
+				let mv = 0.05;
+				if (ball.length-1 <= 0) {
+					ball[0].t += mv;
+				} else {
+					for (let i=1;i<ball.length;i++) {
+						if (ball[i].t - ball[i-1].t > 0.12) {
+							ball[i].t += mv;
+						}
+						else {
+							break;
+						}
+					}
+				}
+				for (let i=0;i<ball2.length;i++) {
+					ball.push(ball2[i]);
+				}
+				// pop ball
+				let colorball = [ball3];
+				for (let i=pos+1;i<ball.length;i++) {
+					if (ball3.color == ball[i].color) {
+						colorball.push(ball[i]);
+					} else {
+						break;
+					}
+				}
+				for (let i=pos-1;i>=0;i--) {
+					if (ball3.color == ball[i].color) {
+						colorball.push(ball[i]);
+					} else {
+						break;
+					}
+				}
+				if (colorball.length >= 3) {
+					for (let i=0;i<colorball.length;i++) {
+						for (let j=ball.length-1;j>=0;j--) {
+							if (colorball[i] == ball[j]) {
+								ball.splice(j,1);
+								break;
+							}
+						}
+					}
+				}
+			}
+			function draw() {
+				ctx.clearRect(0,0,canvas.width,canvas.height);
+				ctx.drawImage(bgImg,0,0);
+				//frog
+				ctx.save();
+				ctx.translate(325,230);
+				ctx.rotate(iRotate);
+				ctx.translate(-45,-45);
+				ctx.scale(1.2,1.2);
+				ctx.drawImage(oImg,0,0);
+
+				ctx.beginPath();
+				ctx.fillStyle = frogColor2;
+				ctx.arc(37,15,5,0,360*Math.PI/180,false);
+				ctx.fill();
+				ctx.beginPath();
+				ctx.fillStyle = frogColor;
+				ctx.arc(37,70,15,0,360*Math.PI/180,false);
+				ctx.fill();
+				ctx.restore();
+				//waypoint
+				for(let i = waypoint.length-1;i>=0;i--){
+					let p0 = {x: waypoint[i].x0, y: waypoint[i].y0}
+					let p1 = {x: waypoint[i].x1, y: waypoint[i].y1}
+					let p2 = {x: waypoint[i].x2, y: waypoint[i].y2}
+					let p3 = {x: waypoint[i].x3, y: waypoint[i].y3}
+					ctx.beginPath();
+					ctx.lineWidth = 10;
+					ctx.moveTo(p0.x, p0.y);
+					ctx.bezierCurveTo(p1.x,p1.y, p2.x,p2.y, p3.x,p3.y);
+					ctx.stroke(); 
+
+					ctx.beginPath();
+					ctx.fillStyle = 'lime';
+					ctx.arc(waypoint[i].x0,waypoint[i].y0,5,0,360*Math.PI/180,false);
+					ctx.fill();
+				}
+				//ball-loop
+				for(let i = ball.length-1;i>=0;i--){
+					if (i >= ball.length-1) {
+						ball[i].move(true,undefined)
+					} else {
+						ball[i].move(false,ball[i+1])
+					}
+					if (ball[i].dead) {
+						ball.splice(i,1);
+					}
+					//console.log(ball[i].color);
+					ball[i].draw();
+					//if (ball[i].x > canvas.width || ball[i].y > canvas.height) {
+					//	ball.splice(i,1);
+					//}
+				}
+				//userball
+				for(var j = aBall.length-1;j>=0;j--){
+					ctx.save();
+					ctx.beginPath();
+					ctx.fillStyle = aBall[j].color;
+					ctx.translate(325,230);
+					ctx.arc(aBall[j].x,aBall[j].y,20,0,360*Math.PI/180,false);
+					ctx.fill();
+					ctx.restore();
+					//Collision detection
+					aBall[j].x += aBall[j].a/30;
+					aBall[j].y += aBall[j].b/30;
+					for(let i = 0;i<ball.length;i++){
+						if(pz(ball[i].x,ball[i].y,(aBall[j].x+325),(aBall[j].y+230))){
+							insertBall(aBall[j],i,aBall[j].color);
+							aBall.splice(j,1);
+							break;
+						}
+					}
+				}
+				requestAnimationFrame(draw);
+			}
+		</script>
+	</body>
+</html>
